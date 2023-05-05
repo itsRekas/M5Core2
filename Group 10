@@ -1,0 +1,1011 @@
+
+#include <M5Core2.h> // Import M5Core2 library
+#include <Wire.h> // Import Wire library for I2C communication
+#include "MAX30100_PulseOximeter.h" // Import MAX30100_PulseOximeter library for pulse oximeter sensor
+#include <EMailSender.h> // Import EMailSender library for sending email
+#include "esp_wpa2.h" // Import esp_wpa2 library for WiFi authentication using WPA2 protocol
+#include <WiFi.h> // Import WiFi library for connecting to WiFi network
+#include <string.h> // Import string library for string operations
+byte mac[6]; // Declare array to store MAC address of the device
+
+#define EAP_ANONYMOUS_IDENTITY "bab9755" // Enter your NYU Net ID (for WiFi authentication)
+#define EAP_IDENTITY "bab9755" // Enter your NYU Net ID (for WiFi authentication)
+#define EAP_PASSWORD "Amitrabalo1968@" // Enter the password for your NYU Net ID account here in the quotations (for WiFi authentication)
+
+const char* smtpServer = "smtp.gmail.com"; // Set SMTP server for email
+const int smtpPort = 465; // Set SMTP port for email
+const char* recipientEmail = "rka6631@nyu.edu"; // Set recipient email address
+const char* ssid = "nyu"; // Set WiFi SSID for connecting to the network
+
+// Declare boolean variables for button presses and selection of gender
+bool isRunnerPressed = false;
+bool isObesityPressed = false;
+bool isAboutPressed = false;
+bool isMusicPressed = false;
+bool isSprintPressed = false;
+bool isLongPressed = false;
+bool isHistory1Pressed = false;
+bool isStart1Pressed=false;
+bool isStop1Pressed=false;
+bool isStart2Pressed=false;
+bool isStop2Pressed=false;
+bool isStart3Pressed=false;
+bool isStop3Pressed=false;
+bool gender=true;
+bool genderselected=false;
+bool isDistancePressed=false;
+
+// Declare integer variables for age, weight, start time, current time, elapsed time, distance, and counter
+int age=10;
+int weight=50;
+int startTime; // for the starting time when the athlete starts running
+int currentTime; // record the time elapsed until the user pressed the stop button
+int elapsedTime; // to store the number of seconds that have passed after the
+int distance;
+int ctr=0;
+
+uint32_t tsLastReport=0;
+
+// Declare double variables for speed, seconds elapsed, total heart rate, average heart rate, and calorie
+double speed;
+double secondselapsed;
+double totalHR=0;
+double averageHR;
+double calorie;
+
+PulseOximeter pox; // Create an instance of the PulseOximeter class for using the pulse oximeter sensor
+
+void setup() {
+ M5.begin(); // Initialize M5Core2 library
+ pox.begin(); // Initialize PulseOximeter sensor
+ WiFi.disconnect(true);  // Disconnect from WiFi to set a new WiFi connection
+ WiFi.mode(WIFI_STA); // Set WiFi mode as station
+ WiFi.begin(ssid, WPA2_AUTH_PEAP, EAP_ANONYMOUS_IDENTITY, EAP_IDENTITY, EAP_PASSWORD); // Connect to the WiFi network using WPA2 authentication with PEAP protocol and NYU Net ID credentials
+ Serial.begin(9600); // Initialize serial communication with a baud rate of 9600
+ welcome(); // Call welcome function
+}
+
+void runnerPressed(Event& e){ // Function to handle button press event for "Runner" button
+ Serial.println("Runner PRessed"); // Print message to serial monitor
+ isRunnerPressed = true; // Set the flag for "Runner" button press to true
+}
+
+void obesityPressed(Event& e){ // Function to handle button press event for "Obesity" button
+ Serial.println("Obesity PRessed"); // Print message to serial monitor
+ isObesityPressed = true; // Set the flag for "Obesity" button press to true
+}
+
+void aboutPressed(Event& e){ // Function to handle button press event for "About" button
+ Serial.println("About PRessed"); // Print message to serial monitor
+ isAboutPressed=true; // Set the flag for "About" button press to true
+}
+
+void musicPressed(Event& e){ // Function to handle button press event for "Music" button
+ Serial.println("Music PRessed"); // Print message to serial monitor
+ isMusicPressed=true; // Set the flag for "Music" button press to true
+}
+
+void sprintPressed(Event& e){
+ Serial.println("Sprint PRessed"); // print message to serial monitor
+ isSprintPressed=true; // set the boolean variable isSprintPressed to true
+}
+
+void LongPressed(Event& e){
+ Serial.println("Long PRessed"); // print message to serial monitor
+ isLongPressed=true; // set the boolean variable isLongPressed to true
+}
+
+void History1Pressed(Event& e){
+ Serial.println("History PRessed"); // print message to serial monitor
+ isHistory1Pressed=true; // set the boolean variable isHistory1Pressed to true
+}
+
+void Start1Pressed(Event& e){
+ Serial.println("Start PRessed"); // print message to serial monitor
+ isStart1Pressed=true; // set the boolean variable isStart1Pressed to true
+}
+
+void Stop1Pressed(Event& e){
+ Serial.println("Stop PRessed"); // print message to serial monitor
+ isStop1Pressed=true; // set the boolean variable isStop1Pressed to true
+}
+
+void Start2Pressed(Event& e){
+ Serial.println("Start PRessed"); // print message to serial monitor
+ isStart2Pressed=true; // set the boolean variable isStart2Pressed to true
+}
+
+void Stop2Pressed(Event& e){
+ Serial.println("Stop PRessed"); // print message to serial monitor
+ isStop2Pressed=true; // set the boolean variable isStop2Pressed to true
+}
+
+void Start3Pressed(Event& e){
+ Serial.println("Start PRessed"); // print message to serial monitor
+ isStart3Pressed=true; // set the boolean variable isStart3Pressed to true
+}
+
+void Stop3Pressed(Event& e){
+ Serial.println("Stop PRessed"); // print message to serial monitor
+ isStop3Pressed=true; // set the boolean variable isStop3Pressed to true
+}
+
+void MalePressed(Event& e){
+ Serial.println("Male PRessed"); // print message to serial monitor
+ gender=true; // set the boolean variable gender to true (indicating male)
+ genderselected=true; // set the boolean variable genderselected to true
+}
+
+void FemalePressed(Event& e){
+ Serial.println("Female PRessed"); // print message to serial monitor
+ gender=false; // set the boolean variable gender to false (indicating female)
+ genderselected=true; // set the boolean variable genderselected to true
+}
+
+void D80Pressed(Event& e){
+ Serial.println("History PRessed"); // print message to serial monitor
+ distance=80; // set the integer variable distance to 80
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void D100Pressed(Event& e){
+ distance=100; // set the integer variable distance to 100
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void D200Pressed(Event& e){
+ distance=200; // set the integer variable distance to 200
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void D400Pressed(Event& e){
+ distance=400; // set the integer variable distance to 400
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void D5000Pressed(Event& e){
+ distance=5000; // set the integer variable distance to 5000
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void D10000Pressed(Event& e){
+ distance=10000; // set the integer variable distance to 10000
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+
+}
+void D21000Pressed(Event& e){
+ distance=21000; // set the integer variable distance to 21000
+ isDistancePressed=true; // set the boolean variable isDistancePressed to true
+}
+
+void loop() {
+ menu(); // Call the menu function to display the main menu
+ M5.update(); // Update the M5Stack display
+}
+
+void menu(){
+ // Clear the display and set the background color to purple
+ M5.Lcd.clearDisplay();
+ M5.Lcd.fillScreen(PURPLE);
+
+ // Create four buttons with text labels and set their properties
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {WHITE, BLACK, WHITE};
+ Button runner(0, 0, 0, 0, false,"RUNNER", off_clrs, on_clrs, MC_DATUM);
+ Button obesity(0, 0, 0, 0, false ,"OBESITY", off_clrs, on_clrs, MC_DATUM);
+ Button about(0, 0, 0, 0, false ,"ABOUT", off_clrs, on_clrs, MC_DATUM);
+ Button music(0, 0, 0, 0, false ,"MUSIC", off_clrs, on_clrs, MC_DATUM);
+
+ // Calculate the positions of the buttons based on screen size
+ int16_t fw = M5.Lcd.width();
+ int16_t qh = M5.Lcd.height() / 4;
+ int16_t hh = M5.Lcd.height() / 2;
+ int16_t th = M5.Lcd.height()-qh;
+ runner.set(0,5,fw-5,qh-5);
+ obesity.set(0,qh+5,fw-5,qh-5);
+ about.set(0,hh+5,fw-5,qh-5);
+ music.set(0,th+5,fw-5,qh-5);
+
+ // Add event handlers to the buttons for tap events
+ runner.addHandler(runnerPressed, E_TAP);
+ obesity.addHandler(obesityPressed, E_TAP);
+ about.addHandler(aboutPressed, E_TAP);
+ music.addHandler(musicPressed, E_TAP);
+
+runner.draw();  // draw the runner button on the screen
+obesity.draw();  // draw the obesity button on the screen
+about.draw();  // draw the about button on the screen
+music.draw();  // draw the music button on the screen
+
+while(1){  // infinite loop to keep the program running until a button is pressed
+ M5.update();  // check for any button events
+ if(isRunnerPressed){  // if the runner button is pressed
+   M5.Lcd.clearDisplay(BLACK);  // clear the screen to black
+   M5.begin();  // initialize the M5Stack
+   M5.Lcd.flush();  // flush the display
+   M5.Lcd.fillScreen(BLACK);  // fill the screen with black color
+   dorunner();  // execute the "dorunner" function
+   break;  // exit the loop
+ }
+ else if(isObesityPressed){  // if the obesity button is pressed
+   M5.Lcd.clearDisplay(BLACK);  // clear the screen to black
+   M5.begin();  // initialize the M5Stack
+   M5.Lcd.flush();  // flush the display
+   M5.Lcd.fillScreen(BLACK);  // fill the screen with black color
+   doobesity();  // execute the "doobesity" function
+   break;  // exit the loop
+ }
+ else if(isAboutPressed){  // if the about button is pressed
+   M5.Lcd.clearDisplay(BLACK);  // clear the screen to black
+   M5.begin();  // initialize the M5Stack
+   M5.Lcd.flush();  // flush the display
+   M5.Lcd.fillScreen(BLACK);  // fill the screen with black color
+   doabout();  // execute the "doabout" function
+   break;  // exit the loop
+ }
+ else if(isMusicPressed){  // if the music button is pressed
+   M5.Lcd.clearDisplay(BLACK);  // clear the screen to black
+   M5.begin();  // initialize the M5Stack
+   M5.Lcd.flush();  // flush the display
+   M5.Lcd.fillScreen(BLACK);  // fill the screen with black color
+   domusic();  // execute the "domusic" function
+   break;  // exit the loop
+ }
+ else{  // if no button is pressed
+   true;  // do nothing
+ }
+}
+void welcome(){
+ // Clear the screen and fill it with purple
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+
+ // Set the cursor position and text size for "WELCOME"
+ M5.Lcd.setCursor(60,20);
+ M5.Lcd.setTextColor(BLACK);
+ M5.Lcd.setTextSize(5);
+
+ // Print "WELCOME"
+ M5.Lcd.printf("WELCOME");
+
+ // Set the cursor position and text size for "to"
+ M5.Lcd.setCursor(140,90);
+ M5.Lcd.setTextSize(3);
+
+ // Print "to"
+ M5.Lcd.printf("to");
+
+ // Set the cursor position and text size for "STAR"
+ M5.Lcd.setCursor(90,140);
+ M5.Lcd.setTextSize(6);
+
+ // Print "STAR"
+ M5.Lcd.printf("STAR");
+
+ // Wait for 5 seconds before returning
+ delay(5000);
+}
+
+void dorunner(){
+ // Clear the screen and fill it with purple
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE); 
+
+ // Define the colors for buttons in their on and off states
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {WHITE, BLACK, WHITE};
+
+ // Create buttons for sprint, long distance, and history
+ Button sprint(0, 0, 0, 0, false,"SPRINT", off_clrs, on_clrs, MC_DATUM);
+ Button longdist(0, 0, 0, 0, false ,"LONG", off_clrs, on_clrs, MC_DATUM);
+ Button history1(0, 0, 0, 0, false ,"HISTORY", off_clrs, on_clrs, MC_DATUM);
+
+ // Set the button positions and sizes based on screen dimensions
+ int16_t fw = M5.Lcd.width() ;
+ int16_t ot = M5.Lcd.height() / 3;
+ int16_t th = M5.Lcd.height()-ot;
+ sprint.set(0,5,fw-5,ot-5);
+ longdist.set(0,ot+5,fw-5,ot-5);
+ history1.set(0,th+5,fw-5,ot-5);
+
+ // Add tap event handlers for each button
+ sprint.addHandler(sprintPressed, E_TAP);
+ longdist.addHandler(LongPressed, E_TAP);
+ history1.addHandler(History1Pressed, E_TAP);
+
+ // Draw the buttons on the screen
+ sprint.draw();
+ longdist.draw();
+ history1.draw();
+}
+
+while (1) {
+ M5.update(); // Check for any button presses
+ if(isSprintPressed){ // If "SPRINT" button is pressed
+   isSprintPressed=false; // Reset the button press flag
+   M5.Lcd.clearDisplay(BLACK); // Clear the display and set background color to black
+   M5.begin(); // Initialize the display
+   M5.Lcd.flush(); // Flush the display buffer
+   M5.Lcd.fillScreen(BLACK); // Fill the screen with black
+   getdistance(); // Call the getdistance() function to measure distance for sprint
+   dosprint(); // Call the dosprint() function to perform sprint game
+   break; // Exit the while loop
+ }
+ else if(isLongPressed){ // If "LONG" button is pressed
+   isLongPressed=false; // Reset the button press flag
+   M5.Lcd.clearDisplay(BLACK); // Clear the display and set background color to black
+   M5.begin(); // Initialize the display
+   M5.Lcd.flush(); // Flush the display buffer
+   M5.Lcd.fillScreen(BLACK); // Fill the screen with black
+   getdistance2(); // Call the getdistance2() function to measure distance for long distance
+   dolong(); // Call the dolong() function to perform long distance game
+   break; // Exit the while loop
+ }
+ else if(isHistory1Pressed){ // If "HISTORY" button is pressed
+   isHistory1Pressed=false; // Reset the button press flag
+   M5.Lcd.clearDisplay(BLACK); // Clear the display and set background color to black
+   M5.begin(); // Initialize the display
+   M5.Lcd.flush(); // Flush the display buffer
+   M5.Lcd.fillScreen(BLACK); // Fill the screen with black
+   dohistory1(); // Call the dohistory1() function to show history of games played
+   break; // Exit the while loop
+ }
+ else if(M5.BtnA.wasPressed()){ // If "BACK" button is pressed
+   isRunnerPressed = false; // Reset the button press flags for all buttons
+   isObesityPressed = false;
+   isAboutPressed = false;
+   isMusicPressed = false;
+   break; // Exit the while loop
+ }
+ else{
+   true; // If no button is pressed, do nothing
+ }
+}
+
+void getdistance(){
+ M5.Lcd.clear(); // Clear the LCD screen
+ M5.Lcd.fillScreen(PURPLE); // Fill the LCD screen with a purple color
+
+ // Set the colors for the buttons
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {WHITE, BLACK, WHITE};
+
+ // Create the buttons for different distances
+ Button D80(0, 0, 0, 0, false,"80", off_clrs, on_clrs, MC_DATUM);
+ Button D100(0, 0, 0, 0, false ,"100", off_clrs, on_clrs, MC_DATUM);
+ Button D200(0, 0, 0, 0, false ,"200", off_clrs, on_clrs, MC_DATUM);
+ Button D400(0, 0, 0, 0, false ,"400", off_clrs, on_clrs, MC_DATUM);
+
+ // Set the position and size of each button
+ int16_t fw = M5.Lcd.width();
+ int16_t qh = M5.Lcd.height() / 4;
+ int16_t hh = M5.Lcd.height() / 2;
+ int16_t th = M5.Lcd.height()-qh;
+ D80.set(0,5,fw-5,qh-5);
+ D100.set(0,qh+5,fw-5,qh-5);
+ D200.set(0,hh+5,fw-5,qh-5);
+ D400.set(0,th+5,fw-5,qh-5);
+
+ // Add a tap event handler for each button
+ D80.addHandler(D80Pressed, E_TAP);
+ D100.addHandler(D100Pressed, E_TAP);
+ D200.addHandler(D200Pressed, E_TAP);
+ D400.addHandler(D400Pressed, E_TAP);
+
+ // Draw the buttons on the screen
+ D80.draw();
+ D100.draw();
+ D200.draw();
+ D400.draw();
+
+ // Wait for a button to be pressed
+ while(1){
+   M5.update(); // Update the M5Stack
+
+   if(isDistancePressed){ // If a button was pressed, exit the loop
+     isDistancePressed=false;
+     break;
+   }
+ }
+}
+
+void getdistance2(){
+ // Clear the display and set the background color to purple
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+
+ // Define button colors for when the button is on and off
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {WHITE, BLACK, WHITE};
+
+ // Create buttons for three distance options
+ Button D5000(0, 0, 0, 0, false,"5000", off_clrs, on_clrs, MC_DATUM);
+ Button D10000(0, 0, 0, 0, false ,"10000", off_clrs, on_clrs, MC_DATUM);
+ Button D21000(0, 0, 0, 0, false ,"21000", off_clrs, on_clrs, MC_DATUM);
+
+ // Calculate screen dimensions for button placement
+ int16_t fw = M5.Lcd.width() ;
+ int16_t ot = M5.Lcd.height() / 3;
+ int16_t th = M5.Lcd.height()-ot;
+
+ // Set button positions
+ D5000.set(0,5,fw-5,ot-5);
+ D10000.set(0,ot+5,fw-5,ot-5);
+ D21000.set(0,th+5,fw-5,ot-5);
+
+ // Add button event handlers
+ D5000.addHandler(D5000Pressed, E_TAP);
+ D10000.addHandler(D10000Pressed, E_TAP);
+ D21000.addHandler(D21000Pressed, E_TAP);
+
+ // Draw buttons to the screen
+ D5000.draw();
+ D10000.draw();
+ D21000.draw();
+
+ // Wait for user to select a distance option and then break out of the loop
+ while(1){
+   M5.update();
+   if(isDistancePressed){
+     isDistancePressed=false;
+     break;
+   }
+ }
+}
+
+void dosprint(){
+ // Clear the display and set the background color to purple
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+  // Define button color schemes for when the button is on and off
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {GREEN, BLACK, WHITE};
+  // Create a button object with the label "START"
+ Button start1(0, 0, 0, 0, false,"START", off_clrs, on_clrs, MC_DATUM);
+  // Get the width and height of the screen
+ int16_t fw = M5.Lcd.width() ;
+ int16_t fh = M5.Lcd.height() ;
+  // Set the position and size of the button to be centered on the screen
+ start1.set(10,10,fw-10,fh-10);
+
+ // Add a handler for when the button is pressed
+ start1.addHandler(Start1Pressed, E_TAP);
+
+start1.draw();  // draw the "START" button on the screen
+
+while(1){  // enter an infinite loop
+ bool back=false;  // initialize the "back" boolean variable to false
+ M5.update();  // update the M5Stack display
+ if(isStart1Pressed){  // check if the "START" button is pressed
+   isStart1Pressed=false;  // reset the flag variable
+   startTime = millis();  // record the current time
+   M5.Lcd.clearDisplay(BLACK);  // clear the display
+   M5.begin();  // initialize the M5Stack
+   M5.Lcd.flush();  // flush the display
+   M5.Lcd.fillScreen(PURPLE);  // fill the screen with purple color
+   ButtonColors on_clrs = {BLUE, BLACK, WHITE};  // define button colors for "STOP" button
+   ButtonColors off_clrs = {RED, BLACK, WHITE};
+   Button stop1(0, 0, 0, 0, false,"STOP", off_clrs, on_clrs, MC_DATUM);  // create the "STOP" button
+   int16_t fw = M5.Lcd.width() ;
+   int16_t fh = M5.Lcd.height() ;
+   stop1.set(10,10,fw-10,fh-10);  // set the position and size of the "STOP" button
+   stop1.addHandler(Stop1Pressed, E_TAP);  // attach the "STOP" button handler function
+   stop1.draw();  // draw the "STOP" button on the screen
+   while(1){  // enter another infinite loop
+     M5.update();  // update the M5Stack display
+     if(back==true){  // check if the "back" variable is true
+       break;  // exit the loop
+     }
+
+// Check if the stop button was pressed
+if(isStop1Pressed){
+ // Reset the flag
+ isStop1Pressed=false;
+
+ // Calculate the elapsed time and speed
+ currentTime = millis();
+ elapsedTime = currentTime - startTime;
+ secondselapsed=elapsedTime/1000;
+ speed=distance/secondselapsed;
+
+ // Display the result on the LCD screen
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+ M5.Lcd.setCursor(40,30);
+ M5.Lcd.setTextSize(2);
+ M5.Lcd.print("CONGRATS!");
+ M5.Lcd.setCursor(0,70);
+ M5.Lcd.setTextSize(1);
+ M5.Lcd.print("Distance Covered: ");
+ M5.Lcd.print(distance);
+ M5.Lcd.print("m");
+ M5.Lcd.setCursor(0,95);
+ M5.Lcd.print("Time used: ");
+ M5.Lcd.print(secondselapsed);
+ M5.Lcd.print("s");
+ M5.Lcd.setCursor(0,120);
+ M5.Lcd.print("Average speed: ");
+ M5.Lcd.print(speed);
+ M5.Lcd.print("m/s");
+
+ // Send an email to the user with the results
+ EMailSender emailSend("smtp.account@gmail.com", "password");
+ EMailSender::EMailMessage message;
+ message.subject = "Runner Detail";
+ message.message = "Congratulations! Today you ran ",distance,"m in ",secondselapsed,"s with an average speed of ",speed,"m/s. Well done!"; ;
+ EMailSender::Response resp = emailSend.send("user@gmail.com", message);
+
+ // Wait for the user to press the back button
+ while(1){
+   M5.update();
+   if(M5.BtnA.wasPressed()){
+     back=true;
+     break;
+   }
+ }
+}
+
+     }
+   }
+   // If back button is pressed, exit the loop and go back to the main menu
+   if(back==true){
+     back=false;
+     break;
+   }
+   // If the back button is not pressed, loop continues
+   else{
+     true;
+   }
+    
+  
+ }
+}
+void dolong(){
+// Clear the screen and set the background color to purple
+M5.Lcd.clear();
+M5.Lcd.fillScreen(PURPLE);
+
+// Define button colors for ON and OFF states
+ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ButtonColors off_clrs = {GREEN, BLACK, WHITE};
+
+// Create a new button object for START with OFF color
+Button start2(0, 0, 0, 0, false,"START", off_clrs, on_clrs, MC_DATUM);
+
+// Set the button size and position
+int16_t fw = M5.Lcd.width() ;
+int16_t fh = M5.Lcd.height() ;
+start2.set(10,10,fw-10,fh-10);
+
+// Add a press handler for the START button
+start2.addHandler(Start2Pressed, E_TAP);
+
+// Draw the START button on the screen
+start2.draw();
+
+// Loop until user presses the back button
+while(1){
+ bool back=false;
+ M5.update();
+
+ // If the START button is pressed, start the timer and switch to the STOP button
+ if(isStart2Pressed){
+   isStart2Pressed=false;
+   startTime = millis();
+   M5.Lcd.clearDisplay(BLACK);
+   M5.begin();
+   M5.Lcd.flush();
+   M5.Lcd.fillScreen(PURPLE);
+
+   // Define button colors for ON and OFF states
+   ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+   ButtonColors off_clrs = {RED, BLACK, WHITE};
+
+   // Create a new button object for STOP with OFF color
+   Button stop2(0, 0, 0, 0, false,"STOP", off_clrs, on_clrs, MC_DATUM);
+
+   // Set the button size and position
+   int16_t fw = M5.Lcd.width() ;
+   int16_t fh = M5.Lcd.height() ;
+   stop2.set(10,10,fw-10,fh-10);
+
+   // Add a press handler for the STOP button
+   stop2.addHandler(Stop2Pressed, E_TAP);
+
+   // Draw the STOP button on the screen
+   stop2.draw();
+
+   // Start the pulse oximeter sensor
+   pox.begin();
+
+   // Loop until user presses the STOP button or the back button
+   while(1){
+     if(back==true){
+       break;
+     }
+M5.update();  // check for button and touch screen updates
+pox.update(); // check for heart rate sensor updates
+totalHR += pox.getHeartRate(); // add current heart rate to total
+ctr++; // increment counter for average heart rate calculation
+if(isStop2Pressed){ // if Stop button is pressed
+ averageHR = totalHR/ctr; // calculate average heart rate
+ isStop2Pressed = false; // reset stop button flag
+ currentTime = millis(); // get current time
+ elapsedTime = currentTime - startTime; // calculate elapsed time
+ secondselapsed = elapsedTime/1000; // convert elapsed time to seconds
+ speed = distance/secondselapsed; // calculate average speed
+ M5.Lcd.clear(); // clear display
+ M5.Lcd.fillScreen(PURPLE); // set background color
+ // display congratulatory message with runner details
+ M5.Lcd.setCursor(40,30);
+ M5.Lcd.setTextSize(2);
+ M5.Lcd.print("CONGRATS!");
+ M5.Lcd.setCursor(0,70);
+ M5.Lcd.setTextSize(1);
+ M5.Lcd.print("Distance Covered: ");
+ M5.Lcd.print(distance);
+ M5.Lcd.print("m");
+ M5.Lcd.setCursor(0,95);
+ M5.Lcd.print("Time used: ");
+ M5.Lcd.print(secondselapsed);
+ M5.Lcd.print("s");
+ M5.Lcd.setCursor(0,120);
+ M5.Lcd.print("Average speed: ");
+ M5.Lcd.print(speed);
+ M5.Lcd.print("m/s");
+ M5.Lcd.setCursor(0,145);
+ M5.Lcd.print("Average Heartrate: ");
+ M5.Lcd.print(averageHR);
+ totalHR = 0; // reset total heart rate for next run
+ ctr = 0; // reset counter for next run
+ M5.Lcd.print("bpm");
+ // create and send an email with runner details
+ EMailSender emailSend("smtp.account@gmail.com", "password");
+ EMailSender::EMailMessage message;
+ message.subject = "Runner Detail";
+ message.message = "Congratulations! Today you ran ",distance,"m in ",secondselapsed,"s with an average speed of ",speed,"m/s and an average heartrate of ",averageHR,". Well done!"; ;
+ EMailSender::Response resp = emailSend.send("user@gmail.com", message);
+ // wait for user to press button A to go back to main screen
+ while(1){
+   M5.update(); // check for button and touch screen updates
+   if(M5.BtnA.wasPressed()){
+     back = true;
+     break;
+   }
+ }
+}
+
+     }
+   }
+   // If 'back' is true, reset it to false and break out of the loop
+   if(back==true){
+     back=false;
+     break;
+   }
+   // If 'back' is false, continue looping
+   else{
+     true;
+   }
+  
+ }
+}
+// This function displays a message on the screen informing the user to check their email for the history
+void dohistory1(){
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+ M5.Lcd.setTextColor(BLACK);
+ M5.Lcd.setTextSize(2);
+ M5.Lcd.setCursor(0,50);
+ M5.Lcd.print("Hello, Please check your mail for the history. Thank you!");
+ delay(5000);
+}
+
+// This function sets the isObesityPressed flag to false and gets the user's gender, age, weight, and calorie intake
+void doobesity(){
+ isObesityPressed=false;
+ M5.Lcd.clear();
+ getGender();
+ getAge();
+ getWeight();
+ getcalorie();
+}
+
+// This function displays buttons on the screen for the user to select their gender
+void getGender(){
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {WHITE, BLACK, WHITE};
+ Button male(0, 0, 0, 0, false,"MALE", off_clrs, on_clrs, MC_DATUM);
+ Button female(0, 0, 0, 0, false,"FEMALE", off_clrs, on_clrs, MC_DATUM);
+ int16_t fw = M5.Lcd.width() ;
+ int16_t hh = M5.Lcd.height()/2 ;
+ male.set(5,5,fw-5,hh-5);
+ female.set(5,hh+10,fw-5,hh-5);
+  male.addHandler(MalePressed, E_TAP); // Add a handler for when the "MALE" button is pressed
+ female.addHandler(FemalePressed, E_TAP); // Add a handler for when the "FEMALE" button is pressed
+
+ male.draw(); // Draw the "MALE" button on the screen
+ female.draw(); // Draw the "FEMALE" button on the screen
+  // Wait for the user to select their gender and exit the loop
+ while(1){
+   M5.update(); // Check for button and touch screen updates
+   if(genderselected){
+     genderselected=false;
+     break;
+   }
+ }
+}
+
+void getAge(){
+ bool enter=false;
+ while(1){
+   if(enter){
+     enter=false;
+     break;
+   }
+   // Clear the screen and set background color
+   M5.Lcd.clear();
+   M5.Lcd.fillScreen(PURPLE);
+  
+   // Set cursor for text display and print message
+   M5.Lcd.setCursor(5,30);
+   M5.Lcd.setTextColor(BLACK);
+   M5.Lcd.setTextSize(2);
+   M5.Lcd.print("Please Enter your");
+   M5.Lcd.setCursor(125,60);
+   M5.Lcd.print("Age");
+  
+   // Display input box for age
+   M5.Lcd.fillRoundRect(125, 80, 50,55 ,5, WHITE);
+   M5.Lcd.setCursor(130,120);
+   M5.Lcd.print(age);
+  
+   // Get input for age
+   while(1){
+     M5.update();
+     // Increase age if BtnA is pressed
+     if(M5.BtnA.wasPressed()){
+       age++;
+       break;
+     }
+     // Decrease age if BtnC is pressed
+     else if(M5.BtnC.wasPressed()){
+       age--;
+       break;
+     }
+     // Exit loop and move to next step if BtnB is pressed
+     else if(M5.BtnB.wasPressed()){
+       enter=true;
+       break;
+     }
+   }
+ }
+}
+
+void getWeight(){
+ bool enter=false;
+ while(1){
+   if(enter){
+     enter=false;
+     break;
+   }
+   // Clear the screen and set background color
+   M5.Lcd.clear();
+   M5.Lcd.fillScreen(PURPLE);
+  
+   // Set cursor for text display and print message
+   M5.Lcd.setCursor(5,30);
+   M5.Lcd.setTextColor(BLACK);
+   M5.Lcd.setTextSize(2);
+   M5.Lcd.print("Please Enter your");
+   M5.Lcd.setCursor(125,60);
+   M5.Lcd.print("Weight");
+  
+   // Display input box for weight
+   M5.Lcd.fillRoundRect(125, 80, 50,55 ,5, WHITE);
+   M5.Lcd.setCursor(130,120);
+   M5.Lcd.print(weight);
+  
+   // Get input for weight
+   while(1){
+     M5.update();
+     // Increase weight if BtnA is pressed
+     if(M5.BtnA.wasPressed()){
+       weight++;
+       break;
+     }
+     // Decrease weight if BtnC is pressed
+     else if(M5.BtnC.wasPressed()){
+       weight--;
+       break;
+     }
+     // Exit loop and move to next step if BtnB is pressed
+     else if(M5.BtnB.wasPressed()){
+       enter=true;
+       break;
+     }
+   }
+ }
+}
+
+// This function displays a calorie calculator screen on the M5Stack device
+void getcalorie(){
+
+ // Clear the screen and set the background color to purple
+ M5.Lcd.clear();
+ M5.Lcd.fillScreen(PURPLE);
+
+ // Define two sets of button colors for "Start" and "Stop" buttons
+ ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+ ButtonColors off_clrs = {GREEN, BLACK, WHITE};
+
+ // Create a "Start" button, set its position and add a handler for tap events
+ Button start3(0, 0, 0, 0, false,"START", off_clrs, on_clrs, MC_DATUM);
+ int16_t fw = M5.Lcd.width() ;
+ int16_t fh = M5.Lcd.height() ;
+ start3.set(10,10,fw-10,fh-10);
+ start3.addHandler(Start3Pressed, E_TAP);
+ start3.draw();
+
+ // Enter a loop waiting for the "Start" button to be pressed
+ while(1){
+   bool back=false;
+   M5.update();
+   if(isStart3Pressed){
+     isStart3Pressed=false;
+
+     // Store the time when the "Start" button is pressed
+     startTime=millis();
+
+     // Clear the display and set the background color to purple again
+     M5.Lcd.clearDisplay(BLACK);
+     M5.begin();
+     M5.Lcd.flush();
+     M5.Lcd.fillScreen(PURPLE);
+
+     // Create a "Stop" button, set its position and add a handler for tap events
+     ButtonColors on_clrs = {BLUE, BLACK, WHITE};
+     ButtonColors off_clrs = {RED, BLACK, WHITE};
+     Button stop3(0, 0, 0, 0, false,"STOP", off_clrs, on_clrs, MC_DATUM);
+     int16_t fw = M5.Lcd.width() ;
+     int16_t fh = M5.Lcd.height() ;
+     stop3.set(10,10,fw-10,fh-10);
+     stop3.addHandler(Stop3Pressed, E_TAP);
+     stop3.draw();
+
+     // Start heart rate monitoring
+     pox.begin();
+
+     // Enter a loop waiting for the "Stop" button to be pressed
+     while(1){
+       M5.update();
+
+       // If the "Back" button is pressed, break out of the "Stop" button loop
+       if(back==true){
+         break;
+       }
+
+       // Update the pulse oximeter sensor readings and accumulate the total heart rate
+       pox.update();
+       totalHR+=pox.getHeartRate();
+       ctr++;
+
+       // If the "Stop" button is pressed, calculate the calorie burnt and display the result on the screen
+       if(isStop3Pressed){
+         isStop3Pressed=false;
+
+         // Enter a loop waiting for the "Stop" button to be pressed
+while(1){
+ // Update the M5Stack device status
+ M5.update();
+
+ // If the "Back" button is pressed, break out of the "Stop" button loop
+ if(back==true){
+   break;
+ }
+
+ // Update the pulse oximeter sensor readings and accumulate the total heart rate
+ pox.update();
+ totalHR+=pox.getHeartRate();
+ ctr++;
+
+ // If the "Stop" button is pressed, calculate the calorie burnt and display the result on the screen
+ if(isStop3Pressed){
+   isStop3Pressed=false;
+
+   // Calculate the average heart rate and elapsed time
+   averageHR=totalHR/ctr;
+   currentTime = millis();
+   elapsedTime = currentTime - startTime;
+   secondselapsed=elapsedTime/1000;
+  
+   // Calculate the calorie burnt based on the user's gender, heart rate, weight, and age
+   if(gender){
+     calorie=((-49.0969 + (0.6309 * (averageHR)) + (0.1988 * weight) + (0.2017 * age)) / 4.184)*secondselapsed/60;
+   }
+   else if(!gender){
+     calorie=((-19.4022 + (0.4472 * (averageHR)) - (0.1263 * weight) + (0.074 * age)) / 4.184)*secondselapsed/60;
+   }
+  
+   // Reset the total heart rate and counter
+   totalHR=0;
+   ctr=0;
+  
+   // Display the result on the M5Stack screen
+   M5.Lcd.clear();
+   M5.Lcd.fillScreen(PURPLE);
+   M5.Lcd.setCursor(40,30);
+   M5.Lcd.setTextSize(2);
+   M5.Lcd.print("CONGRATS!");
+   M5.Lcd.setCursor(0,100);
+   M5.Lcd.setTextSize(2);
+   M5.Lcd.print("Calorie Burnt : ");
+   M5.Lcd.setCursor(0,140);
+   M5.Lcd.print(calorie);
+   M5.Lcd.print("Cal");
+  
+   // Send an email to the user containing the calorie burnt information
+   EMailSender emailSend("smtp.account@gmail.com", "password");
+   EMailSender::EMailMessage message;
+   message.subject = "Calorie Detail";
+   message.message = "Congratulations! Today you burnt ",calorie,"cal. Welldone!";
+   EMailSender::Response resp = emailSend.send("user@gmail.com", message);
+  
+   // Wait for the user to press the "Back" button to return to the main screen
+   while(1){
+     M5.update();
+     if(M5.BtnA.wasPressed()){
+       back=true;
+       break;
+     }
+   }
+ }
+}
+
+// If the "Back" button was pressed, break out of the main loop
+if(back==true){
+ back=false;
+ break;
+}
+else{
+ // Do nothing and continue the main loop
+ true;
+}
+    
+  
+ }
+}
+// This function displays a QR code on the screen that links to a Google Docs document
+void doabout(){
+ M5.Lcd.clear(); // Clear the screen
+ M5.Lcd.setCursor(0, 0);
+ M5.Lcd.fillScreen(PURPLE); // Fill the screen with a purple color
+ M5.Lcd.qrcode("https://docs.google.com/document/d/1LNujU_qi4AybEam0LfoQnq_XQ_MlC0rvk5ae74XNhkE/edit?usp=sharing", 50, 10, 220, 6); // Generate a QR code that links to a Google Docs document
+ while(1){ // Enter a loop waiting for the "Back" button to be pressed
+   M5.update();
+   if(M5.BtnA.wasPressed()){ // If the "Back" button is pressed, break out of the loop
+     isAboutPressed = false;
+     break;
+   }
+
+ }
+}
+
+// This function displays a QR code on the screen that links to a Spotify playlist
+void domusic(){
+ M5.Lcd.clear(); // Clear the screen
+ M5.Lcd.setCursor(0, 0);
+ M5.Lcd.fillScreen(PURPLE); // Fill the screen with a purple color
+ M5.Lcd.qrcode("https://open.spotify.com/playlist/2s6GwGFqth7ZoCkxeyqQAu?si=412209930e1544f6", 50, 10, 220, 6); // Generate a QR code that links to a Spotify playlist
+ while(1){ // Enter a loop waiting for the "Back" button to be pressed
+   M5.update();
+   if(M5.BtnA.wasPressed()){ // If the "Back" button is pressed, break out of the loop
+     isMusicPressed = false;
+     break;
+   }
+
+ }
+}
+
+
